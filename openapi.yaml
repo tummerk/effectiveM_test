@@ -1,0 +1,331 @@
+openapi: 3.0.0
+info:
+  title: Subscription Service API
+  description: API для управления подписками пользователей
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Локальный сервер
+
+paths:
+  /subscriptions:
+    get:
+      summary: Получить список подписок
+      description: Возвращает список всех подписок с возможностью фильтрации
+      responses:
+        '200':
+          description: Успешный запрос
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subscription'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      tags:
+        - Subscriptions
+
+    post:
+      summary: Создать новую подписку
+      description: Создает новую запись о подписке
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
+      responses:
+        '201':
+          description: Подписка успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      tags:
+        - Subscriptions
+
+  /subscriptions/{id}:
+    get:
+      summary: Получить подписку по ID
+      description: Возвращает информацию о конкретной подписке
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      tags:
+        - Subscriptions
+
+    put:
+      summary: Обновить подписку
+      description: Обновляет информацию о подписке
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionRequest'
+      responses:
+        '200':
+          description: Подписка успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      tags:
+        - Subscriptions
+
+    delete:
+      summary: Удалить подписку
+      description: Удаляет запись о подписке
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Подписка успешно удалена
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      tags:
+        - Subscriptions
+
+  /subscriptions/total-cost:
+    get:
+      summary: Подсчет суммарной стоимости подписок
+      description: Возвращает суммарную стоимость подписок за указанный период с фильтрацией
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          description: Дата начала периода в формате MM-YYYY
+          schema:
+            type: string
+            pattern: '^(0[1-9]|1[0-2])-20\d{2}$'
+        - name: end_date
+          in: query
+          required: true
+          description: Дата окончания периода в формате MM-YYYY
+          schema:
+            type: string
+            pattern: '^(0[1-9]|1[0-2])-20\d{2}$'
+        - name: user_id
+          in: query
+          description: Фильтр по ID пользователя
+          schema:
+            type: string
+            format: uuid
+        - name: service_name
+          in: query
+          description: Фильтр по названию сервиса
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Успешный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TotalCostResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      tags:
+        - Analytics
+
+components:
+  schemas:
+    Subscription:
+      type: object
+      required:
+        - id
+        - service_name
+        - price
+        - user_id
+        - start_date
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор подписки
+        service_name:
+          type: string
+          description: Название сервиса
+        price:
+          type: integer
+          minimum: 0
+          description: Стоимость месячной подписки в рублях
+        user_id:
+          type: string
+          format: uuid
+          description: ID пользователя
+        start_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-20\d{2}$'
+          description: Дата начала подписки в формате MM-YYYY
+        end_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-20\d{2}$'
+          description: Дата окончания подписки в формате MM-YYYY
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateSubscriptionRequest:
+      type: object
+      required:
+        - service_name
+        - price
+        - user_id
+        - start_date
+      properties:
+        service_name:
+          type: string
+          description: Название сервиса
+          example: "Yandex Plus"
+        price:
+          type: integer
+          minimum: 0
+          description: Стоимость месячной подписки в рублях
+          example: 400
+        user_id:
+          type: string
+          format: uuid
+          description: ID пользователя
+          example: "60601fee-2bf1-4721-ae6f-7636e79a0cba"
+        start_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-20\d{2}$'
+          description: Дата начала подписки в формате MM-YYYY
+          example: "07-2025"
+        end_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-20\d{2}$'
+          description: Дата окончания подписки в формате MM-YYYY
+          example: "12-2025"
+
+    UpdateSubscriptionRequest:
+      type: object
+      properties:
+        service_name:
+          type: string
+          description: Название сервиса
+        price:
+          type: integer
+          minimum: 0
+          description: Стоимость месячной подписки в рублях
+        user_id:
+          type: string
+          format: uuid
+          description: ID пользователя
+        start_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-20\d{2}$'
+          description: Дата начала подписки в формате MM-YYYY
+        end_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-20\d{2}$'
+          description: Дата окончания подписки в формате MM-YYYY
+
+    TotalCostResponse:
+      type: object
+      properties:
+        total_cost:
+          type: integer
+          description: Суммарная стоимость подписок за период
+        period_start:
+          type: string
+          description: Начало периода
+        period_end:
+          type: string
+          description: Конец периода
+        user_id:
+          type: string
+          format: uuid
+          description: ID пользователя (если применялся фильтр)
+        service_name:
+          type: string
+          description: Название сервиса (если применялся фильтр)
+
+  responses:
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+
+tags:
+  - name: Subscriptions
+    description: Операции CRUDL над подписками
+  - name: Analytics
+    description: Аналитические операции над подписками
