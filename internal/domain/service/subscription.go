@@ -18,6 +18,7 @@ func (s *SubscriptionService) Create(ctx context.Context,
 	serviceName string, userId uuid.UUID, startDate time.Time) error {
 	err := s.repo.Create(ctx, serviceName, userId, startDate)
 	if err != nil {
-		
+
 	}
+
 }
