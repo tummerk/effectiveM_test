@@ -26,7 +26,7 @@ import (
 // CreateSubscriptionRequest defines model for CreateSubscriptionRequest.
 type CreateSubscriptionRequest struct {
 	// EndDate Дата окончания подписки в формате MM-YYYY
-	EndDate *string `json:"end_date,omitempty"`
+	EndDate *string `json:"end_date"`
 
 	// Price Стоимость месячной подписки в рублях
 	Price int `json:"price"`
@@ -49,7 +49,7 @@ type Subscription struct {
 	EndDate *string `json:"end_date,omitempty"`
 
 	// Id Уникальный идентификатор подписки
-	Id openapi_types.UUID `json:"id"`
+	Id int `json:"id"`
 
 	// Price Стоимость месячной подписки в рублях
 	Price int `json:"price"`
@@ -119,6 +119,15 @@ type NotFound struct {
 	Message *string `json:"message,omitempty"`
 }
 
+// GetSubscriptionsParams defines parameters for GetSubscriptions.
+type GetSubscriptionsParams struct {
+	// UserId Фильтр по ID пользователя
+	UserId *openapi_types.UUID `form:"user_id,omitempty" json:"user_id,omitempty"`
+
+	// ServiceName Фильтр по названию сервиса
+	ServiceName *string `form:"service_name,omitempty" json:"service_name,omitempty"`
+}
+
 // GetSubscriptionsTotalCostParams defines parameters for GetSubscriptionsTotalCost.
 type GetSubscriptionsTotalCostParams struct {
 	// StartDate Дата начала периода в формате MM-YYYY
@@ -144,7 +153,7 @@ type PutSubscriptionsIdJSONRequestBody = UpdateSubscriptionRequest
 type ServerInterface interface {
 	// Получить список подписок
 	// (GET /subscriptions)
-	GetSubscriptions(w http.ResponseWriter, r *http.Request)
+	GetSubscriptions(w http.ResponseWriter, r *http.Request, params GetSubscriptionsParams)
 	// Создать новую подписку
 	// (POST /subscriptions)
 	PostSubscriptions(w http.ResponseWriter, r *http.Request)
@@ -153,13 +162,13 @@ type ServerInterface interface {
 	GetSubscriptionsTotalCost(w http.ResponseWriter, r *http.Request, params GetSubscriptionsTotalCostParams)
 	// Удалить подписку
 	// (DELETE /subscriptions/{id})
-	DeleteSubscriptionsId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	DeleteSubscriptionsId(w http.ResponseWriter, r *http.Request, id int)
 	// Получить подписку по ID
 	// (GET /subscriptions/{id})
-	GetSubscriptionsId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	GetSubscriptionsId(w http.ResponseWriter, r *http.Request, id int)
 	// Обновить подписку
 	// (PUT /subscriptions/{id})
-	PutSubscriptionsId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	PutSubscriptionsId(w http.ResponseWriter, r *http.Request, id int)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -168,7 +177,7 @@ type Unimplemented struct{}
 
 // Получить список подписок
 // (GET /subscriptions)
-func (_ Unimplemented) GetSubscriptions(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GetSubscriptions(w http.ResponseWriter, r *http.Request, params GetSubscriptionsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -186,19 +195,19 @@ func (_ Unimplemented) GetSubscriptionsTotalCost(w http.ResponseWriter, r *http.
 
 // Удалить подписку
 // (DELETE /subscriptions/{id})
-func (_ Unimplemented) DeleteSubscriptionsId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (_ Unimplemented) DeleteSubscriptionsId(w http.ResponseWriter, r *http.Request, id int) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Получить подписку по ID
 // (GET /subscriptions/{id})
-func (_ Unimplemented) GetSubscriptionsId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (_ Unimplemented) GetSubscriptionsId(w http.ResponseWriter, r *http.Request, id int) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Обновить подписку
 // (PUT /subscriptions/{id})
-func (_ Unimplemented) PutSubscriptionsId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (_ Unimplemented) PutSubscriptionsId(w http.ResponseWriter, r *http.Request, id int) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -215,8 +224,29 @@ type MiddlewareFunc func(http.Handler) http.Handler
 func (siw *ServerInterfaceWrapper) GetSubscriptions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetSubscriptionsParams
+
+	// ------------- Optional query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "user_id", r.URL.Query(), &params.UserId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "service_name" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "service_name", r.URL.Query(), &params.ServiceName)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "service_name", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetSubscriptions(w, r)
+		siw.Handler.GetSubscriptions(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -314,7 +344,7 @@ func (siw *ServerInterfaceWrapper) DeleteSubscriptionsId(w http.ResponseWriter, 
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id int
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, chi.URLParam(r, "id"), &id)
 	if err != nil {
@@ -340,7 +370,7 @@ func (siw *ServerInterfaceWrapper) GetSubscriptionsId(w http.ResponseWriter, r *
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id int
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, chi.URLParam(r, "id"), &id)
 	if err != nil {
@@ -366,7 +396,7 @@ func (siw *ServerInterfaceWrapper) PutSubscriptionsId(w http.ResponseWriter, r *
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id int
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, chi.URLParam(r, "id"), &id)
 	if err != nil {
@@ -536,6 +566,7 @@ type NotFoundJSONResponse struct {
 }
 
 type GetSubscriptionsRequestObject struct {
+	Params GetSubscriptionsParams
 }
 
 type GetSubscriptionsResponseObject interface {
@@ -637,7 +668,7 @@ func (response GetSubscriptionsTotalCost500JSONResponse) VisitGetSubscriptionsTo
 }
 
 type DeleteSubscriptionsIdRequestObject struct {
-	Id openapi_types.UUID `json:"id"`
+	Id int `json:"id"`
 }
 
 type DeleteSubscriptionsIdResponseObject interface {
@@ -673,7 +704,7 @@ func (response DeleteSubscriptionsId500JSONResponse) VisitDeleteSubscriptionsIdR
 }
 
 type GetSubscriptionsIdRequestObject struct {
-	Id openapi_types.UUID `json:"id"`
+	Id int `json:"id"`
 }
 
 type GetSubscriptionsIdResponseObject interface {
@@ -710,7 +741,7 @@ func (response GetSubscriptionsId500JSONResponse) VisitGetSubscriptionsIdRespons
 }
 
 type PutSubscriptionsIdRequestObject struct {
-	Id   openapi_types.UUID `json:"id"`
+	Id   int `json:"id"`
 	Body *PutSubscriptionsIdJSONRequestBody
 }
 
@@ -808,8 +839,10 @@ type strictHandler struct {
 }
 
 // GetSubscriptions operation middleware
-func (sh *strictHandler) GetSubscriptions(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) GetSubscriptions(w http.ResponseWriter, r *http.Request, params GetSubscriptionsParams) {
 	var request GetSubscriptionsRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetSubscriptions(ctx, request.(GetSubscriptionsRequestObject))
@@ -889,7 +922,7 @@ func (sh *strictHandler) GetSubscriptionsTotalCost(w http.ResponseWriter, r *htt
 }
 
 // DeleteSubscriptionsId operation middleware
-func (sh *strictHandler) DeleteSubscriptionsId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (sh *strictHandler) DeleteSubscriptionsId(w http.ResponseWriter, r *http.Request, id int) {
 	var request DeleteSubscriptionsIdRequestObject
 
 	request.Id = id
@@ -915,7 +948,7 @@ func (sh *strictHandler) DeleteSubscriptionsId(w http.ResponseWriter, r *http.Re
 }
 
 // GetSubscriptionsId operation middleware
-func (sh *strictHandler) GetSubscriptionsId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (sh *strictHandler) GetSubscriptionsId(w http.ResponseWriter, r *http.Request, id int) {
 	var request GetSubscriptionsIdRequestObject
 
 	request.Id = id
@@ -941,7 +974,7 @@ func (sh *strictHandler) GetSubscriptionsId(w http.ResponseWriter, r *http.Reque
 }
 
 // PutSubscriptionsId operation middleware
-func (sh *strictHandler) PutSubscriptionsId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (sh *strictHandler) PutSubscriptionsId(w http.ResponseWriter, r *http.Request, id int) {
 	var request PutSubscriptionsIdRequestObject
 
 	request.Id = id
@@ -976,35 +1009,35 @@ func (sh *strictHandler) PutSubscriptionsId(w http.ResponseWriter, r *http.Reque
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"9kQb9p1Gbbb2TwAAAP//ZpMLD9ogAAA=",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

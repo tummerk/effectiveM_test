@@ -6,8 +6,12 @@ import (
 )
 
 type Subscription struct {
-	serviceName string
-	price       int
-	userId      uuid.UUID
-	startDate   time.Time
+	ID          int
+	ServiceName string
+	Price       int
+	UserId      uuid.UUID
+	StartDate   time.Time
+	EndDate     *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

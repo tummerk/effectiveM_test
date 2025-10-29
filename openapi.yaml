@@ -4,13 +4,25 @@ info:
   description: API для управления подписками пользователей
   version: 1.0.0
 servers:
-  - url: http://localhost:8080/api/v1
+  - url: http://localhost:8080/
     description: Локальный сервер
 
 paths:
   /subscriptions:
     get:
       summary: Получить список подписок
+      parameters:
+        - name: user_id
+          in: query
+          description: Фильтр по ID пользователя
+          schema:
+            type: string
+            format: uuid
+        - name: service_name
+          in: query
+          description: Фильтр по названию сервиса
+          schema:
+            type: string
       description: Возвращает список всех подписок с возможностью фильтрации
       responses:
         '200':
@@ -58,8 +70,7 @@ paths:
           in: path
           required: true
           schema:
-            type: string
-            format: uuid
+            type: integer
       responses:
         '200':
           description: Успешный запрос
@@ -82,8 +93,7 @@ paths:
           in: path
           required: true
           schema:
-            type: string
-            format: uuid
+            type: integer
       requestBody:
         required: true
         content:
@@ -114,8 +124,7 @@ paths:
           in: path
           required: true
           schema:
-            type: string
-            format: uuid
+            type: integer
       responses:
         '204':
           description: Подписка успешно удалена
@@ -182,8 +191,7 @@ components:
         - start_date
       properties:
         id:
-          type: string
-          format: uuid
+          type: integer
           description: Уникальный идентификатор подписки
         service_name:
           type: string
@@ -239,6 +247,7 @@ components:
           description: Дата начала подписки в формате MM-YYYY
           example: "07-2025"
         end_date:
+          nullable: true
           type: string
           pattern: '^(0[1-9]|1[0-2])-20\d{2}$'
           description: Дата окончания подписки в формате MM-YYYY
